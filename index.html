@@ -630,28 +630,39 @@
                 
                 let nowInMs = Date.now();
                 const video = document.getElementById("webcam");
+                
+                // 强制确保视频在播放
+                if (video.paused) video.play();
+
                 if (video.currentTime !== this.lastVideoTime) {
                     this.lastVideoTime = video.currentTime;
                     const results = this.handLandmarker.detectForVideo(video, nowInMs);
 
+                    const statusDiv = document.getElementById('gesture-status');
+
                     if (results.landmarks && results.landmarks.length > 0) {
                         const lm = results.landmarks[0];
                         
+                        // 1. 旋转逻辑 (保持不变)
                         const palmX = lm[9].x; 
                         const palmY = lm[9].y; 
                         
-                        const targetRotY = (palmX - 0.5) * 2; 
-                        const targetRotX = (palmY - 0.5) * 1;
+                        // 增加灵敏度：手机竖屏操作范围小，我们将系数翻倍
+                        const targetRotY = (palmX - 0.5) * 4; // 原来是2，现在改4，转得更快
+                        const targetRotX = (palmY - 0.5) * 2;
                         
                         this.mainGroup.rotation.y = THREE.MathUtils.lerp(this.mainGroup.rotation.y, targetRotY, 0.1);
                         this.mainGroup.rotation.x = THREE.MathUtils.lerp(this.mainGroup.rotation.x, targetRotX, 0.1);
 
+                        // 2. 手势计算
                         const thumbTip = new THREE.Vector3(lm[4].x, lm[4].y, lm[4].z);
                         const indexTip = new THREE.Vector3(lm[8].x, lm[8].y, lm[8].z);
                         const wrist = new THREE.Vector3(lm[0].x, lm[0].y, lm[0].z);
                         
+                        // 计算捏合距离
                         const pinchDist = thumbTip.distanceTo(indexTip);
                         
+                        // 计算平均指距
                         let fingerDistSum = 0;
                         [8, 12, 16, 20].forEach(idx => {
                             const tip = new THREE.Vector3(lm[idx].x, lm[idx].y, lm[idx].z);
@@ -659,36 +670,42 @@
                         });
                         const avgFingerDist = fingerDistSum / 4;
 
-                        let newMode = this.mode;
-                        let status = "Detection Active";
+                        // --- 调试核心：把数值打印出来 ---
+                        // 如果你能看到数字在变，说明模型完全正常，只是阈值问题
+                        statusDiv.innerText = `Pinch: ${pinchDist.toFixed(3)} | Open: ${avgFingerDist.toFixed(3)}`;
 
-                        if (pinchDist < 0.06) {
+                        // --- 放宽判定标准 (针对手机优化) ---
+                        // 手机屏幕小，手指距离可能计算得比较大
+                        let newMode = this.mode;
+                        
+                        // 捏合：放宽到 0.08 (原来是 0.05)
+                        if (pinchDist < 0.08) {
                             newMode = CONFIG.modes.FOCUS;
-                            status = "👌 PINCH: Focus Mode";
-                        } else if (avgFingerDist < 0.25) { 
+                            statusDiv.innerText += " -> 👌 PINCH";
+                        } 
+                        // 握拳：放宽到 0.3 (原来是 0.25)
+                        else if (avgFingerDist < 0.3) { 
                             newMode = CONFIG.modes.TREE;
-                            status = "✊ FIST: Tree Mode";
-                        } else if (avgFingerDist > 0.4) {
+                            statusDiv.innerText += " -> ✊ FIST";
+                        } 
+                        // 张开：放宽到 0.35 (原来是 0.4)
+                        else if (avgFingerDist > 0.35) {
                             newMode = CONFIG.modes.SCATTER;
-                            status = "🖐 OPEN: Scatter Mode";
+                            statusDiv.innerText += " -> 🖐 OPEN";
                         }
 
-                        document.getElementById('gesture-status').innerText = status;
-
-                        // Switch logic
+                        // 状态切换逻辑
                         if (newMode !== this.mode) {
-                            // --- 调整点 3: 模式切换时的随机逻辑 ---
-                            // 如果是切换到聚焦模式，强制随机选择一张照片
-                            if (newMode === CONFIG.modes.FOCUS) {
-                                this.selectRandomPhoto();
-                            }
-
+                            if (newMode === CONFIG.modes.FOCUS) this.selectRandomPhoto();
                             this.mode = newMode;
                             
                             if (this.mode === CONFIG.modes.TREE) this.recalculateTreePositions();
                             else if (this.mode === CONFIG.modes.SCATTER) this.calculateScatterPositions();
                             else if (this.mode === CONFIG.modes.FOCUS) this.calculateFocusPositions();
                         }
+                    } else {
+                        // 如果没有识别到手
+                        statusDiv.innerText = "No hand detected (请把手靠近点)";
                     }
                 }
             }
@@ -715,4 +732,3 @@
 </body>
 
 </html>
-
