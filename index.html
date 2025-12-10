@@ -37,13 +37,30 @@
 
         #webcam-container {
             position: fixed;
-            bottom: 20px;
+            /* 改为右上角，避免遮挡手指操作区 */
+            top: 20px; 
             right: 20px;
-            width: 160px;
-            height: 120px;
-            opacity: 0.1; /* Hidden but active */
-            z-index: 100; 
+            
+            /* 放大一点，让你能看清 */
+            width: 240px; 
+            /* 去掉高度限制，让它自适应比例 */
+            height: auto; 
+            
+            /* ⚠️ 关键：完全不透明，让你看清画面 */
+            opacity: 1 !important; 
+            
+            /* 设为红色边框，方便定位 */
+            border: 2px solid red;
+            z-index: 1000;
             pointer-events: none;
+        }
+
+        /* 新增：让视频自适应宽度，防止变形 */
+        #webcam {
+            width: 100%;
+            height: auto;
+            /* 稍微翻转一下，像照镜子一样自然 */
+            transform: scaleX(-1); 
         }
 
         /* UI Overlay */
@@ -611,7 +628,18 @@
 
             startWebcam() {
                 const video = document.getElementById("webcam");
-                const constraints = { video: { facingMode: "user", width: 320, height: 240 } };
+                
+                // --- 修改这里 ---
+                // ❌ 原代码: width: 320, height: 240
+                // ✅ 新代码: 只指定使用前置摄像头，不限制长宽
+                // 这样手机会用默认的最佳比例（通常是 4:3 或 16:9），不会导致画面拉伸变形
+                const constraints = { 
+                    audio: false, 
+                    video: { 
+                        facingMode: "user"
+                    } 
+                }; 
+                // ----------------
 
                 navigator.mediaDevices.getUserMedia(constraints).then((stream) => {
                     video.srcObject = stream;
@@ -732,3 +760,4 @@
 </body>
 
 </html>
+
