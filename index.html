@@ -37,21 +37,22 @@
 
         #webcam-container {
             position: fixed;
-            /* 改为右上角，避免遮挡手指操作区 */
-            top: 20px; 
+            /* 改回右下角 */
+            bottom: 20px; 
             right: 20px;
             
-            /* 放大一点，让你能看清 */
-            width: 240px; 
-            /* 去掉高度限制，让它自适应比例 */
-            height: auto; 
+            /* 恢复小尺寸，不占地方 */
+            width: 160px; 
+            height: 120px; 
             
-            /* ⚠️ 关键：完全不透明，让你看清画面 */
-            opacity: 1 !important; 
+            /* ⚠️ 关键：设为 0.1，既肉眼几乎看不见，又能保持后台运行 */
+            opacity: 0.1; 
             
-            /* 设为红色边框，方便定位 */
-            border: 2px solid red;
-            z-index: 1000;
+            /* 去掉调试用的红边框 */
+            border: none;
+            
+            /* 放在底层，不遮挡 UI */
+            z-index: 0; 
             pointer-events: none;
         }
 
@@ -760,4 +761,5 @@
 </body>
 
 </html>
+
 
